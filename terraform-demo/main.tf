@@ -29,6 +29,7 @@ module "ec2-datatabase" {
   airflow_logs_bucket = ""
   airflow_admin_user = ""
   airflow_admin_pass = ""
+  airflow_dags_bucket = ""
 
   private_ip = var.ip_addresses[0]
 
