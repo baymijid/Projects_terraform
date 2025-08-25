@@ -97,7 +97,7 @@ module "ec2-airflow" {
         'apache-airflow-providers-dbt-cloud' \
         'apache-airflow-providers-common-sql' \
         'apache-airflow-providers-standard' \
-         --constraint "https://raw.githubusercontent.com/apache/airflow/constraints-${AIRFLOW_VER}/constraints-3.11.txt"
+         --constraint "https://raw.githubusercontent.com/apache/airflow/constraints-2.9.2/constraints-3.11.txt"
 
     # Redis
     dnf -y install redis6
