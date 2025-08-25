@@ -16,20 +16,23 @@ provider "aws" {
 # 1 create database
 # 0 destroy
 # example: if 1=1 ? equal : not equal
-# module "ec2-datatabase" {
-#   # count           = var.create_database ? 1 : 0
-#   source          = "./modules/ec2_instance"
-#   project         = var.project
-#   environment     = var.environment
-#   instance_type   = var.instance_type
-#   role_name       = "ec2-database"
-#   subnet_id       = module.network.public_subnet_ids[0]
-#   vpc_id          = module.network.vpc_id
-#   security_group_ids = [aws_security_group.sg_postgres.id, aws_security_group.sg.id]
-#   airflow_logs_bucket = ""
-#   airflow_admin_user = ""
-#   airflow_admin_pass = ""
-#   user_data = <<-EOF
+module "ec2-datatabase" {
+  count           = var.create_database ? 1 : 0
+  source          = "./modules/ec2_instance"
+  project         = var.project
+  environment     = var.environment
+  instance_type   = var.instance_type
+  role_name       = "ec2-database"
+  subnet_id       = module.network.public_subnet_ids[0]
+  vpc_id          = module.network.vpc_id
+  security_group_ids = [aws_security_group.sg_postgres.id, aws_security_group.sg.id]
+  airflow_logs_bucket = ""
+  airflow_admin_user = ""
+  airflow_admin_pass = ""
+
+  private_ip = var.ip_addresses[0]
+
+  user_data = <<-EOF
     #!/usr/bin/env bash
 #     set -euxo pipefail
 
@@ -73,7 +76,7 @@ module "ec2-airflow" {
   airflow_admin_user = var.airflow_admin_user
   airflow_admin_pass = var.airflow_admin_pass
 
-  private_ip = var.ip_addresses[0]
+  private_ip = var.ip_addresses[1]
 
   user_data = <<-EOF
     #!/usr/bin/env bash
