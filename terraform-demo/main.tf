@@ -34,30 +34,30 @@ module "ec2-datatabase" {
   private_ip = var.ip_addresses[0]
 
   user_data = <<-EOF
-    #!/usr/bin/env bash
-#     set -euxo pipefail
+    # !/usr/bin/env bash
+    set -euxo pipefail
 
-#     dnf -y update
-#     dnf -y install postgresql15 postgresql15-server
+    dnf -y update
+    dnf -y install postgresql15 postgresql15-server
 
-#     # Initialize data directory
-#     /usr/bin/postgresql-setup --initdb
+    # Initialize data directory
+    /usr/bin/postgresql-setup --initdb
 
-#     # Listen on all interfaces
-#     sed -i "s/^#listen_addresses = .*/listen_addresses = '*'/g" /var/lib/pgsql/data/postgresql.conf
+    # Listen on all interfaces
+    sed -i "s/^#listen_addresses = .*/listen_addresses = '*'/g" /var/lib/pgsql/data/postgresql.conf
 
-#     # Allow connections from anywhere (not recommended for production)
-#     echo "host    all             all              0.0.0.0/0              scram-sha-256" >> /var/lib/pgsql/data/pg_hba.conf
+    # Allow connections from anywhere (not recommended for production)
+    echo "host    all             all              0.0.0.0/0              scram-sha-256" >> /var/lib/pgsql/data/pg_hba.conf
 
-#     # Start & enable service
-#     systemctl enable --now postgresql
+    # Start & enable service
+    systemctl enable --now postgresql
 
-#     # Create DB and user (practice only; use Secrets Manager & parameterized scripts in prod)
-#     sudo -u postgres psql -v ON_ERROR_STOP=1 -d postgres <<'SQL'
-#     ${local.db_bootstrap_sql}
-#     SQL
-#   EOF
-# }
+    # Create DB and user (practice only; use Secrets Manager & parameterized scripts in prod)
+    sudo -u postgres psql -v ON_ERROR_STOP=1 -d postgres <<'SQL'
+    ${local.db_bootstrap_sql}
+    SQL
+  EOF
+}
 
 module "ec2-airflow" {
   count           = var.create_airflow ? 1 : 0
@@ -98,15 +98,19 @@ module "ec2-airflow" {
       'psycopg2-binary>=2.9.0' \
       'alembic>=1.6.3'"
 
-    # Install Airflow and dependencies
+   # Install Airflow and dependencies
     su - airflow -c "source ~/venv/bin/activate && pip install \
         'apache-airflow==2.9.2' \
         'apache-airflow[amazon,postgres,celery,redis]==2.9.2' \
         'apache-airflow-providers-dbt-cloud' \
         'apache-airflow-providers-common-sql' \
         'apache-airflow-providers-standard' \
-         --constraint "https://raw.githubusercontent.com/apache/airflow/constraints-2.9.2/constraints-3.11.txt"
-
+        'apache-airflow-providers-amazon' \
+        'apache-airflow-providers-postgres' \
+        'pandas' \
+        'sqlalchemy' \
+         --constraint 'https://raw.githubusercontent.com/apache/airflow/constraints-2.9.2/constraints-3.11.txt'"
+    
     # Redis
     dnf -y install redis6
     systemctl enable --now redis6
