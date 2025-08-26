@@ -16,6 +16,7 @@ provider "aws" {
 # 1 create database
 # 0 destroy
 # example: if 1=1 ? equal : not equal
+
 module "ec2-datatabase" {
   count           = var.create_database ? 1 : 0
   source          = "./modules/ec2_instance"
@@ -65,7 +66,7 @@ module "ec2-airflow" {
   depends_on      = [
                       module.ec2-datatabase,
                       module.network
-                      ]
+                    ]
   project         = var.project
   environment     = var.environment
   instance_type   = var.instance_type
@@ -78,7 +79,7 @@ module "ec2-airflow" {
   airflow_admin_pass = var.airflow_admin_pass
   airflow_dags_bucket = module.code_bucket.bucket_name
 
-  private_ip = var.ip_addresses[1]
+  private_ip      = var.ip_addresses[1]
 
   user_data = <<-EOF
     #!/usr/bin/env bash
@@ -98,7 +99,7 @@ module "ec2-airflow" {
       'psycopg2-binary>=2.9.0' \
       'alembic>=1.6.3'"
 
-   # Install Airflow and dependencies
+    # Install Airflow and dependencies
     su - airflow -c "source ~/venv/bin/activate && pip install \
         'apache-airflow==2.9.2' \
         'apache-airflow[amazon,postgres,celery,redis]==2.9.2' \
@@ -110,7 +111,7 @@ module "ec2-airflow" {
         'pandas' \
         'sqlalchemy' \
          --constraint 'https://raw.githubusercontent.com/apache/airflow/constraints-2.9.2/constraints-3.11.txt'"
-    
+
     # Redis
     dnf -y install redis6
     systemctl enable --now redis6
@@ -146,7 +147,7 @@ module "ec2-airflow" {
 
     # Create admin user
     su - airflow -c "set -a; source /etc/airflow/airflow.env; set +a; source ~/venv/bin/activate; airflow users create --username '${var.airflow_admin_user}' --password '${var.airflow_admin_pass}' --firstname Admin --lastname User --role Admin --email admin@example.com"
-   
+
     # Updated systemd units with environment file and dependencies
     cat >/etc/systemd/system/airflow-webserver.service <<'UNIT'
     [Unit]
@@ -213,6 +214,10 @@ module "ec2-airflow" {
     systemctl start airflow-scheduler
     sleep 5
     systemctl start airflow-worker
+
+
+    sudo -u airflow aws s3 sync s3://${module.code_bucket.name}/dags/ /home/airflow/airflow/dags --delete
+
   EOF
 }
 
