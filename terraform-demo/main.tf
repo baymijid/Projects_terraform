@@ -90,7 +90,13 @@ module "ec2-airflow" {
     # Create airflow user + venv
     id -u airflow &>/dev/null || useradd -m -s /bin/bash airflow
     su - airflow -c "python3.11 -m venv ~/venv && source ~/venv/bin/activate && pip install --upgrade pip"
-    su - airflow -c "source ~/venv/bin/activate && pip install 'psycopg2-binary>=2.9'"
+
+    # First install base dependencies including cryptography
+    su - airflow -c "source ~/venv/bin/activate && pip install \
+      'cryptography' \
+      'SQLAlchemy>=1.4.0,<2.0.0' \
+      'psycopg2-binary>=2.9.0' \
+      'alembic>=1.6.3'"
 
     # Install Airflow and dependencies
     su - airflow -c "source ~/venv/bin/activate && pip install \
@@ -110,11 +116,7 @@ module "ec2-airflow" {
     su - airflow -c "mkdir -p ~/airflow/dags ~/airflow/logs"
 
     # Generate a Fernet key (used to encrypt connections/variables)
-    FERNET_KEY=$(su - airflow -c "source ~/venv/bin/activate && python - <<'PY'
-    from cryptography.fernet import Fernet
-    print(Fernet.generate_key().decode())
-    PY
-    ")
+    FERNET_KEY=$(su - airflow -c "source ~/venv/bin/activate && python -c 'from cryptography.fernet import Fernet; print(Fernet.generate_key().decode())'")
 
     # Write environment file consumed by systemd units and CLI
     install -d -m 0755 /etc/airflow
@@ -127,8 +129,8 @@ module "ec2-airflow" {
     AIRFLOW__CORE__DAGS_ARE_PAUSED_AT_CREATION=True
     AIRFLOW__SCHEDULER__ENABLE_HEALTH_CHECK=True
     AIRFLOW__API__AUTH_BACKENDS=airflow.api.auth.backend.basic_auth,airflow.api.auth.backend.session
-    AIRFLOW__DATABASE__SQL_ALCHEMY_CONN=postgresql+psycopg2://airflow:airflow@13.239.24.80/airflow_db
-    AIRFLOW__CELERY__RESULT_BACKEND=db+postgresql://airflow:airflow@54.252.195.45/airflow_db
+    AIRFLOW__DATABASE__SQL_ALCHEMY_CONN=postgresql+psycopg2://airflow:airflow@${var.ip_addresses[0]}:5432/airflow_db
+    AIRFLOW__CELERY__RESULT_BACKEND=db+postgresql://airflow:airflow@${var.ip_addresses[0]}:5432/airflow_db
     AIRFLOW__CELERY__BROKER_URL=redis://localhost:6379/0
 
     ENV
@@ -140,15 +142,17 @@ module "ec2-airflow" {
 
     # Create admin user
     su - airflow -c "set -a; source /etc/airflow/airflow.env; set +a; source ~/venv/bin/activate; airflow users create --username '${var.airflow_admin_user}' --password '${var.airflow_admin_pass}' --firstname Admin --lastname User --role Admin --email admin@example.com"
-
-    # Simple systemd units
+   
+    # Updated systemd units with environment file and dependencies
     cat >/etc/systemd/system/airflow-webserver.service <<'UNIT'
     [Unit]
     Description=Airflow Webserver
-    After=network.target
+    After=network.target postgresql.service redis6.service
+    Wants=postgresql.service redis6.service
 
     [Service]
     User=airflow
+    EnvironmentFile=/etc/airflow/airflow.env
     Environment=PATH=/home/airflow/venv/bin
     Environment=AIRFLOW_HOME=/home/airflow/airflow
     ExecStart=/home/airflow/venv/bin/airflow webserver --port 8080
@@ -161,10 +165,12 @@ module "ec2-airflow" {
     cat >/etc/systemd/system/airflow-scheduler.service <<'UNIT'
     [Unit]
     Description=Airflow Scheduler
-    After=network.target
+    After=network.target postgresql.service redis6.service airflow-webserver.service
+    Wants=postgresql.service redis6.service
 
     [Service]
     User=airflow
+    EnvironmentFile=/etc/airflow/airflow.env
     Environment=PATH=/home/airflow/venv/bin
     Environment=AIRFLOW_HOME=/home/airflow/airflow
     ExecStart=/home/airflow/venv/bin/airflow scheduler
@@ -174,8 +180,35 @@ module "ec2-airflow" {
     WantedBy=multi-user.target
     UNIT
 
+    # Add Celery worker service
+    cat >/etc/systemd/system/airflow-worker.service <<'UNIT'
+    [Unit]
+    Description=Airflow Celery Worker
+    After=network.target postgresql.service redis6.service airflow-webserver.service
+    Wants=postgresql.service redis6.service
+
+    [Service]
+    User=airflow
+    EnvironmentFile=/etc/airflow/airflow.env
+    Environment=PATH=/home/airflow/venv/bin
+    Environment=AIRFLOW_HOME=/home/airflow/airflow
+    ExecStart=/home/airflow/venv/bin/airflow celery worker
+    Restart=always
+
+    [Install]
+    WantedBy=multi-user.target
+    UNIT
+
+    # Wait for database to be ready
+    sleep 10
+
     systemctl daemon-reload
-    systemctl enable --now airflow-webserver.service airflow-scheduler.service
+    systemctl enable airflow-webserver airflow-scheduler airflow-worker
+    systemctl start airflow-webserver
+    sleep 5
+    systemctl start airflow-scheduler
+    sleep 5
+    systemctl start airflow-worker
   EOF
 }
 
