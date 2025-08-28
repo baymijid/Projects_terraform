@@ -1,6 +1,6 @@
 environment   = "dev"
 project       = "data-lake"
-instance_type = "t2.micro"
+instance_type = "c7i-flex.large"
 bucket_name     = "bay"
 aws_region      = "ap-southeast-2"
 airflow_admin_user = "bay"
