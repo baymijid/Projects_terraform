@@ -32,7 +32,7 @@ module "ec2-datatabase" {
   airflow_admin_pass = ""
   airflow_dags_bucket = ""
 
-  private_ip = var.ip_addresses[0]
+  private_ip      = var.ip_addresses[0]
 
   user_data = <<-EOF
     # !/usr/bin/env bash
@@ -217,7 +217,7 @@ module "ec2-airflow" {
 
 
     sudo -u airflow aws s3 sync s3://${module.code_bucket.bucket_name}/dags/ /home/airflow/airflow/dags --delete
-
+   
   EOF
 }
 
@@ -245,6 +245,8 @@ module "batch" {
   dbt_vcpu               = var.dbt_vcpu
   dbt_memory             = var.dbt_memory
   aws_region             = var.aws_region
+  private_route_table_ids = module.network.private_route_table_ids
+  depends_on              = [module.network]
 }
 
 module "network" {
