@@ -27,15 +27,18 @@ module "ec2-datatabase" {
   subnet_id       = module.network.public_subnet_ids[0]
   vpc_id          = module.network.vpc_id
   security_group_ids = [aws_security_group.sg_postgres.id, aws_security_group.sg.id]
+
   airflow_logs_bucket = ""
   airflow_admin_user = ""
   airflow_admin_pass = ""
   airflow_dags_bucket = ""
+  # airflow_scripts  = ""
+  # ssh_private_key = var.ssh_private_key
 
   private_ip      = var.ip_addresses[0]
 
   user_data = <<-EOF
-    # !/usr/bin/env bash
+    #!/usr/bin/env bash
     set -euxo pipefail
 
     dnf -y update
