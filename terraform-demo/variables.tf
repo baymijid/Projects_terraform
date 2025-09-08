@@ -70,7 +70,6 @@ variable "databases" {
     user     : string
     password : string
   }))
-  default = []
 }
 
 variable "ip_addresses" {
@@ -85,5 +84,20 @@ variable "create_database" {
 
 variable "create_airflow" {
   description = "Flag to create a airflow"
+  type        = bool
+}
+variable glue_db_name {
+  description = "The name of the Glue database"
+  type        = list(string)
+}
+
+variable "ssh_private_key" {
+  description = "SSH private key for EC2 instance access"
+  type        = string
+  sensitive   = true  # Marks as sensitive to hide in logs
+}
+
+variable deploy_dags {
+  description = "Flag to deploy DAGs to the Airflow instance"
   type        = bool
 }
