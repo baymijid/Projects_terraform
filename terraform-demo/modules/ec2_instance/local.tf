@@ -1,8 +1,7 @@
 locals {
-  name = "${var.project}-${var.environment}-etl"
-
+  name      = "${var.project}-${var.environment}-etl"
   user_data = var.user_data
-}
+
   airflow_conn = <<-EOF
     #!/usr/bin/env bash
     set -euo pipefail
