@@ -108,6 +108,8 @@ module "ec2-airflow" {
       'SQLAlchemy>=1.4.0,<2.0.0' \
       'psycopg2-binary>=2.9.0' \
       'alembic>=1.6.3'"
+      'pyarrow>=8.0.0' \
+      
 
     # Install Airflow and dependencies
     su - airflow -c "source ~/venv/bin/activate && pip install \

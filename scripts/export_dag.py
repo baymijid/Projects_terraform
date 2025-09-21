@@ -59,6 +59,10 @@ def _export_one_table(table: str, ds: str):
                 ])
 
                 table_pa = pa.Table.from_pandas(df, preserve_index=False, schema=schema_pa)
+            elif table == "accounts":
+                df['bank_code'] = df['bank_code'].astype(str)
+                df['balance'] = df['balance'].astype(str)
+                df['interest_rate'] = df['interest_rate'].astype(str)
             else:
                 table_pa = pa.Table.from_pandas(df, preserve_index=False)
 
